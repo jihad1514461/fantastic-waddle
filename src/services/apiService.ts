@@ -1,7 +1,7 @@
 import { ApiResponse } from '../types';
 
 class ApiService {
-  private baseUrl = '/api';
+  private baseUrl = 'http://localhost:3000/api';
   private defaultHeaders = {
     'Content-Type': 'application/json',
   };

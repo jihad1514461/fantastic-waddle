@@ -1,4 +1,4 @@
-import { DivideIcon as LucideIcon } from 'lucide-react';
+// import { DivideIcon as LucideIcon } from 'lucide-react';
 
 export interface ModuleConfig {
   id: string;
@@ -130,6 +130,18 @@ export const LANDING_FEATURES: LandingFeature[] = [
     order: 2,
   },
   {
+    id: 'admin-portal-main',
+    title: 'Admin Portal Main',
+    description: 'Comprehensive administrative dashboard with user management, system monitoring, and security controls.',
+    buttonText: 'Access Admin Portal Main',
+    icon: 'Shield',
+    gradient: 'from-purple-600 to-blue-600',
+    category: 'administration',
+    moduleId: 'adminMain',
+    enabled: true,
+    order: 3,
+  },
+  {
     id: 'coming-soon',
     title: 'More Modules Coming',
     description: 'We are constantly adding new modules and features. Stay tuned for exciting updates and new capabilities.',
@@ -137,9 +149,9 @@ export const LANDING_FEATURES: LandingFeature[] = [
     icon: 'Sparkles',
     gradient: 'from-gray-500 to-gray-700',
     category: 'future',
-    moduleId: null,
+    moduleId: "null",
     enabled: false,
-    order: 3,
+    order: 4,
   },
 ];
 
