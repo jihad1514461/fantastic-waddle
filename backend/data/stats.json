@@ -1,0 +1,4 @@
+[
+    { "id": 1, "name": "Strength", "discription":"something","short":"Str" },
+    { "id": 2, "name": "Integer", "discription":"something","short":"Int" }
+]
