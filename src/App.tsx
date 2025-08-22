@@ -26,7 +26,9 @@ type AdminPage = 'dashboard' | 'users' | 'settings' | 'analytics' | 'security' |
 type GamePage = 'dashboard' | 'leaderboard' | 'achievements' | 'tournaments' | 'profile' | 'store';
 
 // Lazy load AdminFlowManager
-const LazyAdminFlowManager = lazy(() => import('./modules/admin/pages/AdminFlowManager'));
+const LazyAdminFlowManager = lazy(() =>
+  import('./modules/admin/pages/AdminFlowManager').then(module => ({ default: module.AdminFlowManager }))
+);
 
 const AdminApp: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<AdminPage>('dashboard');
@@ -56,8 +58,12 @@ const AdminApp: React.FC = () => {
     }
   };
 
+  const handlePageChange = (page: string) => {
+    setCurrentPage(page as AdminPage);
+  };
+
   return (
-    <AdminLayout currentPage={currentPage} onPageChange={setCurrentPage}>
+    <AdminLayout currentPage={currentPage} onPageChange={handlePageChange}>
       {renderAdminPage()}
     </AdminLayout>
   );
@@ -85,8 +91,12 @@ const GameApp: React.FC = () => {
     }
   };
 
+  const handleGamePageChange = (page: string) => {
+    setCurrentPage(page as GamePage);
+  };
+
   return (
-    <GameLayout currentPage={currentPage} onPageChange={setCurrentPage}>
+    <GameLayout currentPage={currentPage} onPageChange={handleGamePageChange}>
       {renderGamePage()}
     </GameLayout>
   );

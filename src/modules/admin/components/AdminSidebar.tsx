@@ -21,6 +21,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentPage, onPageC
       '/admin/analytics': 'analytics',
       '/admin/security': 'security',
       '/admin/showcase': 'showcase',
+      '/admin/flows': 'flows',
     };
     return pathMap[path] || 'dashboard';
   };
