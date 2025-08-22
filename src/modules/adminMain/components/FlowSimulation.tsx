@@ -7,13 +7,14 @@ import { Play, Pause, Square, SkipForward } from 'lucide-react';
 
 export const FlowSimulation: React.FC = () => {
   const {
-    currentFlow,
+    currentStory,
     simulation,
     startSimulation,
     pauseSimulation,
     resumeSimulation,
     stopSimulation,
     stepSimulation,
+    chooseSimulationPath,
   } = useAdminFlowController();
 
   const [autoPlay, setAutoPlay] = useState(false);
@@ -33,8 +34,8 @@ export const FlowSimulation: React.FC = () => {
   }, [autoPlay, simulation?.status, stepSimulation]);
 
   const handleStart = () => {
-    if (currentFlow) {
-      startSimulation(currentFlow.id);
+    if (currentStory) {
+      startSimulation(currentStory.id);
       setAutoPlay(true);
     }
   };
@@ -59,31 +60,46 @@ export const FlowSimulation: React.FC = () => {
     stepSimulation();
   };
 
+  const handleChoiceClick = (choiceId: string) => {
+    chooseSimulationPath(choiceId);
+    setAutoPlay(true);
+  };
+
   const getNodeStatus = (nodeId: string) => {
     if (!simulation) return 'inactive';
 
     const step = simulation.steps.find((s) => s.nodeId === nodeId);
-    return step ? step.status : 'inactive';
+    if (!step) return 'inactive';
+    
+    if (simulation.currentNodeId === nodeId) return 'active';
+    return step.status;
   };
 
   const getProgressPercentage = () => {
-    if (!simulation || !currentFlow) return 0;
+    if (!simulation || !currentStory) return 0;
 
-    const totalNodes = currentFlow.nodes.length;
+    const totalNodes = Array.isArray(currentStory.nodes) ? currentStory.nodes.length : 0;
     const completedSteps = simulation.steps.filter((s) => s.status === 'completed').length;
 
     return totalNodes > 0 ? (completedSteps / totalNodes) * 100 : 0;
   };
 
-  if (!currentFlow) {
+  const getCurrentNode = () => {
+    if (!simulation?.currentNodeId || !currentStory || !Array.isArray(currentStory.nodes)) return null;
+    return currentStory.nodes.find(n => n.id === simulation.currentNodeId);
+  };
+
+  const currentNode = getCurrentNode();
+
+  if (!currentStory) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No Flow Selected
+            No Story Selected
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            Select a flow to run simulation
+            Select a story to run simulation
           </p>
         </div>
       </div>
@@ -97,7 +113,7 @@ export const FlowSimulation: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Flow Simulation: {currentFlow.name}
+              Story Simulation: {currentStory.name}
             </h3>
             <div className="flex items-center space-x-2">
               {!simulation || simulation.status === 'completed' ? (
@@ -160,9 +176,7 @@ export const FlowSimulation: React.FC = () => {
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Current Node:</span>
                   <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                    {simulation.currentNodeId
-                      ? currentFlow.nodes.find((n) => n.id === simulation.currentNodeId)?.data.label || 'Unknown'
-                      : 'None'}
+                    {currentNode?.data.title || 'None'}
                   </span>
                 </div>
 
@@ -185,6 +199,51 @@ export const FlowSimulation: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Current Node Display */}
+      {currentNode && simulation?.status !== 'completed' && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Current Scene</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xl font-medium text-gray-900 dark:text-white">{currentNode.data.title}</h4>
+                {currentNode.data.description && (
+                  <p className="text-gray-600 dark:text-gray-400 mt-2">{currentNode.data.description}</p>
+                )}
+              </div>
+
+              {currentNode.choices.length > 0 && simulation?.status === 'paused' && (
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">Choose your path:</h5>
+                  <div className="space-y-2">
+                    {currentNode.choices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        onClick={() => handleChoiceClick(choice.id)}
+                        disabled={!choice.nextNodeId}
+                        className={`w-full p-3 text-left rounded-lg border transition-colors ${
+                          choice.nextNodeId
+                            ? 'border-blue-300 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900'
+                            : 'border-gray-300 bg-gray-100 dark:bg-gray-700 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="font-medium">{choice.name}</div>
+                        <div className="text-sm text-gray-500">→ {choice.nextTitle}</div>
+                        {!choice.nextNodeId && (
+                          <div className="text-xs text-red-500 mt-1">No linked node</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Flow Visualization */}
       <Card>
         <CardHeader>
@@ -192,14 +251,14 @@ export const FlowSimulation: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentFlow.nodes.map((node) => {
+            {Array.isArray(currentStory.nodes) && currentStory.nodes.map((node) => {
               const status = getNodeStatus(node.id);
               return (
                 <div
                   key={node.id}
                   className={`p-4 rounded-lg border-2 transition-all duration-300 ${
                     status === 'active'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900 ring-2 ring-blue-200'
                       : status === 'completed'
                       ? 'border-green-500 bg-green-50 dark:bg-green-900'
                       : status === 'error'
@@ -208,15 +267,13 @@ export const FlowSimulation: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900 dark:text-white">{node.data.label}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white">{node.data.title}</h4>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        node.type === 'start'
+                        node.type === 'intro'
                           ? 'bg-green-100 text-green-800'
-                          : node.type === 'process'
+                          : node.type === 'script'
                           ? 'bg-blue-100 text-blue-800'
-                          : node.type === 'decision'
-                          ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
@@ -243,9 +300,9 @@ export const FlowSimulation: React.FC = () => {
                       {status === 'inactive' ? 'Waiting' : status.charAt(0).toUpperCase() + status.slice(1)}
                     </span>
 
-                    {node.connections.length > 0 && (
+                    {node.choices.length > 0 && (
                       <span className="text-xs text-gray-500">
-                        {node.connections.length} connection{node.connections.length !== 1 ? 's' : ''}
+                        {node.choices.length} choice{node.choices.length !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
@@ -265,7 +322,7 @@ export const FlowSimulation: React.FC = () => {
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {simulation.steps.map((step, index) => {
-                const node = currentFlow.nodes.find((n) => n.id === step.nodeId);
+                const node = Array.isArray(currentStory.nodes) ? currentStory.nodes.find((n) => n.id === step.nodeId) : undefined;
                 return (
                   <div
                     key={`${step.nodeId}-${index}`}
@@ -284,7 +341,7 @@ export const FlowSimulation: React.FC = () => {
                         }`}
                       />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {node?.data.label || 'Unknown Node'}
+                        {node?.data.title || 'Unknown Node'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -294,6 +351,28 @@ export const FlowSimulation: React.FC = () => {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Simulation Complete */}
+      {simulation?.status === 'completed' && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <div className="text-green-600 mb-4">
+              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Simulation Complete!
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              The story simulation has finished successfully.
+            </p>
+            <Button onClick={handleStart}>Run Again</Button>
           </CardContent>
         </Card>
       )}
