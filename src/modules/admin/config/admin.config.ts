@@ -59,11 +59,11 @@ export const ADMIN_CONFIG = {
       component: 'AdminUIShowcase',
     },
     {
-      id: 'flow-manager',
-      label: 'Flow Manager',
+      id: 'story-manager',
+      label: 'Story Manager',
       icon: 'GitBranch',
-      path: '/admin/flows',
-      component: 'AdminFlowManager',
+      path: '/admin/stories',
+      component: 'AdminStoryManager',
     },
   ],
 

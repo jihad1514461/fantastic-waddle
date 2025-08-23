@@ -1,4 +1,4 @@
-// import { DivideIcon as LucideIcon } from 'lucide-react';
+import { DivideIcon as LucideIcon } from 'lucide-react';
 
 export interface ModuleConfig {
   id: string;
@@ -130,14 +130,14 @@ export const LANDING_FEATURES: LandingFeature[] = [
     order: 2,
   },
   {
-    id: 'admin-portal-main',
-    title: 'Admin Portal Main',
-    description: 'Comprehensive administrative dashboard with user management, system monitoring, and security controls.',
-    buttonText: 'Access Admin Portal Main',
-    icon: 'Shield',
-    gradient: 'from-purple-600 to-blue-600',
-    category: 'administration',
-    moduleId: 'adminMain',
+    id: 'story-game',
+    title: 'Story Adventures',
+    description: 'Interactive storytelling experience with branching narratives. Choose your own adventure and shape your destiny through immersive stories.',
+    buttonText: 'Start Adventure',
+    icon: 'BookOpen',
+    gradient: 'from-emerald-600 to-teal-600',
+    category: 'entertainment',
+    moduleId: 'story-game',
     enabled: true,
     order: 3,
   },
@@ -149,7 +149,7 @@ export const LANDING_FEATURES: LandingFeature[] = [
     icon: 'Sparkles',
     gradient: 'from-gray-500 to-gray-700',
     category: 'future',
-    moduleId: "null",
+    moduleId: null,
     enabled: false,
     order: 4,
   },

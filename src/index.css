@@ -123,6 +123,33 @@
   background: #6b7280;
 }
 
+/* Story Node Validation Styles */
+.node-error {
+  animation: pulse-error 2s infinite;
+}
+
+.node-warning {
+  animation: pulse-warning 3s infinite;
+}
+
+@keyframes pulse-error {
+  0%, 100% { 
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+  }
+}
+
+@keyframes pulse-warning {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+  }
+}
+
 /* React DatePicker custom styles */
 .react-datepicker-wrapper {
   width: 100%;

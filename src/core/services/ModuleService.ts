@@ -61,6 +61,9 @@ class ModuleService {
       case 'settings':
         const { Settings } = await import('../../pages/Settings');
         return Settings;
+      case 'story-game':
+        const { StoryGamePage } = await import('../../modules/story-game');
+        return StoryGamePage;
       default:
         return () =>
           React.createElement(

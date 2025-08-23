@@ -7,7 +7,7 @@ import { Play, Pause, Square, SkipForward, RotateCcw } from 'lucide-react';
 
 export const FlowSimulation: React.FC = () => {
   const {
-    currentFlow,
+    currentStory,
     simulation,
     startSimulation,
     pauseSimulation,
@@ -19,7 +19,7 @@ export const FlowSimulation: React.FC = () => {
   const [autoPlay, setAutoPlay] = useState(false);
 
   useEffect(() => {
-    let interval: number;
+    let interval: NodeJS.Timeout;
     
     if (autoPlay && simulation?.status === 'running') {
       interval = setInterval(() => {
@@ -33,8 +33,8 @@ export const FlowSimulation: React.FC = () => {
   }, [autoPlay, simulation?.status, stepSimulation]);
 
   const handleStart = () => {
-    if (currentFlow) {
-      startSimulation(currentFlow.id);
+    if (currentStory) {
+      startSimulation(currentStory.id);
       setAutoPlay(true);
     }
   };
@@ -69,23 +69,23 @@ export const FlowSimulation: React.FC = () => {
   };
 
   const getProgressPercentage = () => {
-    if (!simulation || !currentFlow) return 0;
+    if (!simulation || !currentStory) return 0;
     
-    const totalNodes = currentFlow.nodes.length;
+    const totalNodes = currentStory.nodes.length;
     const completedSteps = simulation.steps.filter(s => s.status === 'completed').length;
     
     return totalNodes > 0 ? (completedSteps / totalNodes) * 100 : 0;
   };
 
-  if (!currentFlow) {
+  if (!currentStory) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No Flow Selected
+            No Story Selected
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            Select a flow to run simulation
+            Select a story to run simulation
           </p>
         </div>
       </div>
@@ -99,7 +99,7 @@ export const FlowSimulation: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Flow Simulation: {currentFlow.name}
+              Story Simulation: {currentStory.name}
             </h3>
             <div className="flex items-center space-x-2">
               {!simulation || simulation.status === 'completed' ? (
@@ -158,7 +158,7 @@ export const FlowSimulation: React.FC = () => {
                   <span className="text-gray-500 dark:text-gray-400">Current Node:</span>
                   <span className="ml-2 font-medium text-gray-900 dark:text-white">
                     {simulation.currentNodeId ? 
-                      currentFlow.nodes.find(n => n.id === simulation.currentNodeId)?.data.label || 'Unknown'
+                      currentStory.nodes.find(n => n.id === simulation.currentNodeId)?.data.name || 'Unknown'
                       : 'None'
                     }
                   </span>
@@ -183,16 +183,16 @@ export const FlowSimulation: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Flow Visualization */}
+      {/* Story Visualization */}
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Flow Visualization
+            Story Visualization
           </h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentFlow.nodes.map(node => {
+            {currentStory.nodes.map(node => {
               const status = getNodeStatus(node.id);
               return (
                 <div
@@ -206,12 +206,12 @@ export const FlowSimulation: React.FC = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900 dark:text-white">
-                      {node.data.label}
+                      {node.data.name}
                     </h4>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      node.type === 'start' ? 'bg-green-100 text-green-800' :
-                      node.type === 'process' ? 'bg-blue-100 text-blue-800' :
-                      node.type === 'decision' ? 'bg-yellow-100 text-yellow-800' :
+                      node.type === 'intro' ? 'bg-green-100 text-green-800' :
+                      node.type === 'script' ? 'bg-blue-100 text-blue-800' :
+                      node.type === 'custom' ? 'bg-purple-100 text-purple-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {node.type}
@@ -236,7 +236,7 @@ export const FlowSimulation: React.FC = () => {
                     
                     {node.connections.length > 0 && (
                       <span className="text-xs text-gray-500">
-                        {node.connections.length} connection{node.connections.length !== 1 ? 's' : ''}
+                        {node.connections.length} choice{node.connections.length !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
@@ -258,7 +258,7 @@ export const FlowSimulation: React.FC = () => {
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {simulation.steps.map((step, index) => {
-                const node = currentFlow.nodes.find(n => n.id === step.nodeId);
+                const node = currentStory.nodes.find(n => n.id === step.nodeId);
                 return (
                   <div
                     key={`${step.nodeId}-${index}`}
@@ -272,7 +272,7 @@ export const FlowSimulation: React.FC = () => {
                         'bg-gray-400'
                       }`} />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {node?.data.label || 'Unknown Node'}
+                        {node?.data.name || 'Unknown Node'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">

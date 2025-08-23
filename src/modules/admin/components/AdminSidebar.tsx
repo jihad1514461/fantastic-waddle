@@ -9,7 +9,7 @@ interface AdminSidebarProps {
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentPage, onPageChange }) => {
-  const [isCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const LogoIcon = Icons[ADMIN_CONFIG.branding.logo as keyof typeof Icons] as React.ComponentType<{ size?: number; className?: string }>;
 
@@ -21,7 +21,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentPage, onPageC
       '/admin/analytics': 'analytics',
       '/admin/security': 'security',
       '/admin/showcase': 'showcase',
-      '/admin/flows': 'flows',
+      '/admin/stories': 'stories',
     };
     return pathMap[path] || 'dashboard';
   };

@@ -1,52 +1,72 @@
 import { create } from 'zustand';
-import { FlowNode, FlowConnection, AdminFlow, FlowSimulation, FlowSimulationStep } from '../types/flow.types';
+import { StoryNode, StoryConnection, Story, StorySimulation, StorySimulationStep } from '../types/flow.types';
 import { storageService } from '../../../services/storageService';
 
-interface AdminFlowController {
-  flows: AdminFlow[];
-  currentFlow: AdminFlow | null;
-  selectedNode: FlowNode | null;
-  simulation: FlowSimulation | null;
+interface AdminStoryController {
+  stories: Story[];
+  currentStory: Story | null;
+  selectedNode: StoryNode | null;
+  simulation: StorySimulation | null;
   
-  // Flow management
-  createFlow: (name: string, description: string) => AdminFlow;
-  updateFlow: (flowId: string, updates: Partial<AdminFlow>) => void;
-  deleteFlow: (flowId: string) => void;
-  setCurrentFlow: (flow: AdminFlow | null) => void;
-  loadFlows: () => void;
-  saveFlows: () => void;
+  // Story management
+  createStory: (name: string, description: string) => Story;
+  updateStory: (storyId: string, updates: Partial<Story>) => void;
+  deleteStory: (storyId: string) => void;
+  setCurrentStory: (story: Story | null) => void;
+  loadStories: () => void;
+  saveStories: () => void;
   
   // Node management
-  addNode: (type: FlowNode['type'], position: { x: number; y: number }) => FlowNode;
-  updateNode: (nodeId: string, updates: Partial<FlowNode>) => void;
+  addNode: (type: StoryNode['type'], position: { x: number; y: number }) => StoryNode;
+  updateNode: (nodeId: string, updates: Partial<StoryNode>) => void;
   deleteNode: (nodeId: string) => void;
-  selectNode: (node: FlowNode | null) => void;
+  selectNode: (node: StoryNode | null) => void;
   
   // Connection management
-  addConnection: (nodeId: string, connection: Omit<FlowConnection, 'id'>) => void;
+  addConnection: (nodeId: string, connection: Omit<StoryConnection, 'id'>) => void;
   removeConnection: (nodeId: string, connectionId: string) => void;
-  updateConnection: (nodeId: string, connectionId: string, updates: Partial<FlowConnection>) => void;
+  updateConnection: (nodeId: string, connectionId: string, updates: Partial<StoryConnection>) => void;
   
   // Simulation
-  startSimulation: (flowId: string) => void;
+  startSimulation: (storyId: string) => void;
   pauseSimulation: () => void;
   resumeSimulation: () => void;
   stopSimulation: () => void;
   stepSimulation: () => void;
+  
+  // Validation
+  validateNode: (nodeId: string) => {
+    hasParent: boolean;
+    hasChoices: boolean;
+    hasValidTargets: boolean;
+    issues: string[];
+  };
 }
 
-export const useAdminFlowController = create<AdminFlowController>((set, get) => ({
-  flows: [],
-  currentFlow: null,
+export const useAdminFlowController = create<AdminStoryController>((set, get) => ({
+  stories: [],
+  currentStory: null,
   selectedNode: null,
   simulation: null,
 
-  createFlow: (name: string, description: string) => {
-    const newFlow: AdminFlow = {
-      id: `flow-${Date.now()}`,
+  createStory: (name: string, description: string) => {
+    const introNode: StoryNode = {
+      id: `node-intro-${Date.now()}`,
+      type: 'intro',
+      position: { x: 250, y: 100 },
+      data: {
+        name: 'Story Beginning',
+        description: 'This is where your story begins. Write an engaging opening that draws players in.',
+        image: '',
+      },
+      connections: [],
+    };
+
+    const newStory: Story = {
+      id: `story-${Date.now()}`,
       name,
       description,
-      nodes: [],
+      nodes: [introNode],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: 'admin',
@@ -54,149 +74,200 @@ export const useAdminFlowController = create<AdminFlowController>((set, get) => 
     };
 
     set(state => ({
-      flows: [...state.flows, newFlow],
-      currentFlow: newFlow,
+      stories: [...state.stories, newStory],
+      currentStory: newStory,
     }));
 
-    get().saveFlows();
-    return newFlow;
+    get().saveStories();
+    return newStory;
   },
 
-  updateFlow: (flowId: string, updates: Partial<AdminFlow>) => {
+  updateStory: (storyId: string, updates: Partial<Story>) => {
     set(state => ({
-      flows: state.flows.map(flow =>
-        flow.id === flowId
-          ? { ...flow, ...updates, updatedAt: new Date().toISOString() }
-          : flow
+      stories: state.stories.map(story =>
+        story.id === storyId
+          ? { ...story, ...updates, updatedAt: new Date().toISOString() }
+          : story
       ),
-      currentFlow: state.currentFlow?.id === flowId
-        ? { ...state.currentFlow, ...updates, updatedAt: new Date().toISOString() }
-        : state.currentFlow,
+      currentStory: state.currentStory?.id === storyId
+        ? { ...state.currentStory, ...updates, updatedAt: new Date().toISOString() }
+        : state.currentStory,
     }));
-    get().saveFlows();
+    get().saveStories();
   },
 
-  deleteFlow: (flowId: string) => {
+  deleteStory: (storyId: string) => {
     set(state => ({
-      flows: state.flows.filter(flow => flow.id !== flowId),
-      currentFlow: state.currentFlow?.id === flowId ? null : state.currentFlow,
+      stories: state.stories.filter(story => story.id !== storyId),
+      currentStory: state.currentStory?.id === storyId ? null : state.currentStory,
     }));
-    get().saveFlows();
+    get().saveStories();
   },
 
-  setCurrentFlow: (flow: AdminFlow | null) => {
-    set({ currentFlow: flow, selectedNode: null });
+  setCurrentStory: (story: Story | null) => {
+    set({ currentStory: story, selectedNode: null });
   },
 
-  loadFlows: () => {
-    const savedFlows = storageService.get<AdminFlow[]>('admin-flows') || [];
-    set({ flows: savedFlows });
+  loadStories: () => {
+    const savedStories = storageService.get<Story[]>('admin-stories') || [];
+    // Sanitize loaded data to ensure names are strings, migrate old data, and ensure required fields
+    const sanitizedStories = savedStories.map(story => ({
+      ...story,
+      nodes: story.nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          // Migrate old 'label' field to 'name' if it exists and ensure all required fields
+          name: String(node.data.name || (node.data as any).label || 'Unnamed Node'),
+          description: String(node.data.description || 'No description'),
+          image: String(node.data.image || ''),
+        },
+      })),
+    }));
+    set({ stories: sanitizedStories });
   },
 
-  saveFlows: () => {
-    const { flows } = get();
-    storageService.set('admin-flows', flows);
+  saveStories: () => {
+    const { stories } = get();
+    storageService.set('admin-stories', stories);
   },
 
-  addNode: (type: FlowNode['type'], position: { x: number; y: number }) => {
-    const newNode: FlowNode = {
-      id: `node-${Date.now()}`,
+  addNode: (type: StoryNode['type'], position: { x: number; y: number }) => {
+    const getNodeName = (type: StoryNode['type']) => {
+      switch (type) {
+        case 'intro': return 'Story Opening';
+        case 'script': return 'Story Scene';
+        case 'end': return 'Story Conclusion';
+        case 'custom': return 'Custom Scene';
+        default: return 'New Story Node';
+      }
+    };
+
+    const getNodeDescription = (type: StoryNode['type']) => {
+      switch (type) {
+        case 'intro': return 'This is where your story begins. Write an engaging opening that draws players into your world.';
+        case 'script': return 'A story scene where the narrative unfolds. Describe what happens and set up choices for the player.';
+        case 'end': return 'This is one of your story endings. Provide a satisfying conclusion based on the player\'s journey.';
+        case 'custom': return 'A custom story node. Define what happens here and how it fits into your narrative.';
+        default: return 'Enter your story content here...';
+      }
+    };
+    const newNode: StoryNode = {
+      id: `node-${type}-${Date.now()}`,
       type,
       position,
       data: {
-        label: `${type.charAt(0).toUpperCase() + type.slice(1)} Node`,
-        description: '',
+        name: getNodeName(type),
+        description: getNodeDescription(type),
+        image: '',
       },
       connections: [],
     };
 
-    const { currentFlow } = get();
-    if (currentFlow) {
-      const updatedFlow = {
-        ...currentFlow,
-        nodes: [...currentFlow.nodes, newNode],
+    const { currentStory } = get();
+    if (currentStory) {
+      const updatedStory = {
+        ...currentStory,
+        nodes: [...currentStory.nodes, newNode],
         updatedAt: new Date().toISOString(),
       };
 
       set(state => ({
-        flows: state.flows.map(flow =>
-          flow.id === currentFlow.id ? updatedFlow : flow
+        stories: state.stories.map(story =>
+          story.id === currentStory.id ? updatedStory : story
         ),
-        currentFlow: updatedFlow,
+        currentStory: updatedStory,
       }));
 
-      get().saveFlows();
+      get().saveStories();
     }
 
     return newNode;
   },
 
-  updateNode: (nodeId: string, updates: Partial<FlowNode>) => {
-    const { currentFlow } = get();
-    if (currentFlow) {
-      const updatedFlow = {
-        ...currentFlow,
-        nodes: currentFlow.nodes.map(node =>
+  updateNode: (nodeId: string, updates: Partial<StoryNode>) => {
+    const { currentStory } = get();
+    if (currentStory) {
+      const updatedStory = {
+        ...currentStory,
+        nodes: currentStory.nodes.map(node =>
           node.id === nodeId ? { ...node, ...updates } : node
         ),
         updatedAt: new Date().toISOString(),
       };
 
       set(state => ({
-        flows: state.flows.map(flow =>
-          flow.id === currentFlow.id ? updatedFlow : flow
+        stories: state.stories.map(story =>
+          story.id === currentStory.id ? updatedStory : story
         ),
-        currentFlow: updatedFlow,
+        currentStory: updatedStory,
         selectedNode: state.selectedNode?.id === nodeId
           ? { ...state.selectedNode, ...updates }
           : state.selectedNode,
       }));
 
-      get().saveFlows();
+      get().saveStories();
     }
   },
 
   deleteNode: (nodeId: string) => {
-    const { currentFlow } = get();
-    if (currentFlow) {
-      const updatedFlow = {
-        ...currentFlow,
-        nodes: currentFlow.nodes.filter(node => node.id !== nodeId),
+    const { currentStory } = get();
+    if (currentStory) {
+      // Prevent deleting the last intro node to maintain story integrity
+      const introNodes = currentStory.nodes.filter(node => node.type === 'intro');
+      const nodeToDelete = currentStory.nodes.find(node => node.id === nodeId);
+      
+      if (nodeToDelete?.type === 'intro' && introNodes.length === 1) {
+        console.warn('Cannot delete the last intro node - stories must have at least one starting point');
+        return; // Prevent deletion of the last intro node
+      }
+
+      // Remove the node and clean up any connections pointing to it
+      const updatedNodes = currentStory.nodes
+        .filter(node => node.id !== nodeId)
+        .map(node => ({
+          ...node,
+          connections: node.connections.filter(conn => conn.targetNodeId !== nodeId)
+        }));
+
+      const updatedStory = {
+        ...currentStory,
+        nodes: updatedNodes,
         updatedAt: new Date().toISOString(),
       };
 
       set(state => ({
-        flows: state.flows.map(flow =>
-          flow.id === currentFlow.id ? updatedFlow : flow
+        stories: state.stories.map(story =>
+          story.id === currentStory.id ? updatedStory : story
         ),
-        currentFlow: updatedFlow,
+        currentStory: updatedStory,
         selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode,
       }));
 
-      get().saveFlows();
+      get().saveStories();
     }
   },
 
-  selectNode: (node: FlowNode | null) => {
+  selectNode: (node: StoryNode | null) => {
     set({ selectedNode: node });
   },
 
-  addConnection: (nodeId: string, connection: Omit<FlowConnection, 'id'>) => {
-    const newConnection: FlowConnection = {
+  addConnection: (nodeId: string, connection: Omit<StoryConnection, 'id'>) => {
+    const newConnection: StoryConnection = {
       ...connection,
       id: `conn-${Date.now()}`,
     };
 
     get().updateNode(nodeId, {
       connections: [
-        ...(get().currentFlow?.nodes.find(n => n.id === nodeId)?.connections || []),
+        ...(get().currentStory?.nodes.find(n => n.id === nodeId)?.connections || []),
         newConnection,
       ],
     });
   },
 
   removeConnection: (nodeId: string, connectionId: string) => {
-    const node = get().currentFlow?.nodes.find(n => n.id === nodeId);
+    const node = get().currentStory?.nodes.find(n => n.id === nodeId);
     if (node) {
       get().updateNode(nodeId, {
         connections: node.connections.filter(conn => conn.id !== connectionId),
@@ -204,8 +275,8 @@ export const useAdminFlowController = create<AdminFlowController>((set, get) => 
     }
   },
 
-  updateConnection: (nodeId: string, connectionId: string, updates: Partial<FlowConnection>) => {
-    const node = get().currentFlow?.nodes.find(n => n.id === nodeId);
+  updateConnection: (nodeId: string, connectionId: string, updates: Partial<StoryConnection>) => {
+    const node = get().currentStory?.nodes.find(n => n.id === nodeId);
     if (node) {
       get().updateNode(nodeId, {
         connections: node.connections.map(conn =>
@@ -215,16 +286,66 @@ export const useAdminFlowController = create<AdminFlowController>((set, get) => 
     }
   },
 
-  startSimulation: (flowId: string) => {
-    const flow = get().flows.find(f => f.id === flowId);
-    if (!flow || flow.nodes.length === 0) return;
+  validateNode: (nodeId: string) => {
+    const { currentStory } = get();
+    if (!currentStory) {
+      return { hasParent: false, hasChoices: false, hasValidTargets: false, issues: ['No story loaded'] };
+    }
 
-    const startNode = flow.nodes.find(node => node.type === 'start');
+    const node = currentStory.nodes.find(n => n.id === nodeId);
+    if (!node) {
+      return { hasParent: false, hasChoices: false, hasValidTargets: false, issues: ['Node not found'] };
+    }
+
+    const issues: string[] = [];
+    
+    // Check if node has parent connection (except intro nodes which are entry points)
+    const hasParent = node.type === 'intro' || currentStory.nodes.some(n => 
+      n.connections.some(conn => conn.targetNodeId === nodeId)
+    );
+    
+    if (!hasParent) {
+      issues.push('Node is unreachable - no connections lead to this node');
+    }
+
+    // Check if node has outgoing choices (except end nodes which terminate the story)
+    const hasChoices = node.type === 'end' || node.connections.length > 0;
+    
+    if (!hasChoices) {
+      issues.push('Node has no player choices - story will end here unexpectedly');
+    }
+
+    // Validate that all connections point to existing nodes
+    const hasValidTargets = node.connections.every(conn => 
+      currentStory.nodes.some(n => n.id === conn.targetNodeId)
+    );
+    
+    if (!hasValidTargets) {
+      issues.push('Some choices point to nodes that no longer exist');
+    }
+
+    // Check for empty required fields
+    if (!node.data.name || node.data.name.trim() === '') {
+      issues.push('Node name is required');
+    }
+    
+    if (!node.data.description || node.data.description.trim() === '') {
+      issues.push('Node description is required');
+    }
+
+    return { hasParent, hasChoices, hasValidTargets, issues };
+  },
+
+  startSimulation: (storyId: string) => {
+    const story = get().stories.find(s => s.id === storyId);
+    if (!story || story.nodes.length === 0) return;
+
+    const startNode = story.nodes.find(node => node.type === 'intro');
     if (!startNode) return;
 
-    const simulation: FlowSimulation = {
+    const simulation: StorySimulation = {
       id: `sim-${Date.now()}`,
-      flowId,
+      storyId,
       status: 'running',
       currentNodeId: startNode.id,
       steps: [{
@@ -267,10 +388,10 @@ export const useAdminFlowController = create<AdminFlowController>((set, get) => 
   },
 
   stepSimulation: () => {
-    const { simulation, currentFlow } = get();
-    if (!simulation || !currentFlow || simulation.status !== 'running') return;
+    const { simulation, currentStory } = get();
+    if (!simulation || !currentStory || simulation.status !== 'running') return;
 
-    const currentNode = currentFlow.nodes.find(n => n.id === simulation.currentNodeId);
+    const currentNode = currentStory.nodes.find(n => n.id === simulation.currentNodeId);
     if (!currentNode) return;
 
     // Mark current step as completed
